@@ -27,3 +27,13 @@ def assert_api_error(response, expected_status, expected_error):
         assert response.status_code == expected_status, f"Получен HTTP {response.status_code}"
         matches_expected_error = response.json() == expected_error
         assert matches_expected_error, f"Ожидалось тело ошибки {expected_error!r}"
+
+
+def assert_order_created(response):
+    with allure.step("Проверяем успешное создание заказа и его номер"):
+        assert response.status_code == 200
+        body = response.json()
+        assert body["success"] is True
+        assert isinstance(body["name"], str) and body["name"].strip()
+        order_number = body["order"]["number"]
+        assert type(order_number) is int and order_number > 0

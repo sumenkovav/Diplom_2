@@ -2,17 +2,7 @@ import allure
 
 from data import INVALID_INGREDIENTS, OrderMessageMistake
 from methods.order_methods import OrderMethod
-from tests.response_checks import assert_api_error
-
-
-def assert_order_created(response):
-    with allure.step("Проверяем успешное создание заказа и его номер"):
-        assert response.status_code == 200
-        body = response.json()
-        assert body["success"] is True
-        assert isinstance(body["name"], str) and body["name"].strip()
-        order_number = body["order"]["number"]
-        assert type(order_number) is int and order_number > 0
+from response_checks import assert_api_error, assert_order_created
 
 
 @allure.sub_suite("Создание заказа")

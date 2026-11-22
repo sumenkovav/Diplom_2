@@ -11,7 +11,6 @@ import pytest
 from generators import generate_user_payload
 from methods.order_methods import OrderMethod
 from methods.user_methods import UserMethod
-from tests.response_checks import assert_auth_response
 
 
 @pytest.fixture
@@ -20,29 +19,36 @@ def user_payload():
 
 
 @pytest.fixture
-def register_user(request):
-    def register(payload):
-        response = UserMethod.create_user(payload)
-        if response.ok:
-            token = response.json().get("accessToken")
-            if token:
-                request.addfinalizer(lambda: UserMethod.delete_user(token))
-        return response
+def cleanup_users(request):
+    scheduled_tokens = set()
 
-    return register
+    def schedule_deletion(response):
+        if not response.ok:
+            return
+
+        token = response.json().get("accessToken")
+        if token and token not in scheduled_tokens:
+            scheduled_tokens.add(token)
+            request.addfinalizer(lambda: UserMethod.delete_user(token))
+
+    return schedule_deletion
 
 
 @pytest.fixture
-def create_user(user_payload, register_user):
-    response = register_user(user_payload)
-    assert_auth_response(response, user_payload)
+def create_user(user_payload, cleanup_users):
+    response = UserMethod.create_user(user_payload)
+    cleanup_users(response)
+    response.raise_for_status()
+    access_token = response.json().get("accessToken")
+    if not access_token:
+        raise RuntimeError("Для тестового пользователя не получен accessToken")
     return {
         "user_data": user_payload,
         "user_data_for_login": {
             "email": user_payload["email"],
             "password": user_payload["password"],
         },
-        "access_token": response.json()["accessToken"],
+        "access_token": access_token,
     }
 
 
